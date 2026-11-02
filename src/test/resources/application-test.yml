@@ -1,0 +1,17 @@
+# En test el esquema se arma con copias de las migraciones de tramitea-be
+# (src/test/resources/db/migration), como lo tiene la base compartida.
+spring:
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    table: tr_flyway_schema_history
+
+darmoz-auth:
+  # Los tests de auth mockean el cliente: nunca se llama.
+  url: http://localhost:1/auth
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

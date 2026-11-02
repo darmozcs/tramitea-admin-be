@@ -1,0 +1,67 @@
+package com.darmoz.tramiteaadmin.controller;
+
+import com.darmoz.tramiteaadmin.dto.request.CatalogRequests;
+import com.darmoz.tramiteaadmin.dto.response.InstitutionResponse;
+import com.darmoz.tramiteaadmin.service.InstitutionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+@Tag(name = "Instituciones")
+@RestController
+@RequestMapping("/institutions")
+public class InstitutionController {
+
+    private final InstitutionService institutionService;
+
+    public InstitutionController(InstitutionService institutionService) {
+        this.institutionService = institutionService;
+    }
+
+    @GetMapping
+    @Operation(summary = "Listar instituciones", description = "`search` busca en nombre y sigla. Ordenadas por sigla.")
+    public List<InstitutionResponse> list(@RequestParam(required = false) String search) {
+        return institutionService.list(search);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Detalle de una institución")
+    public InstitutionResponse get(@PathVariable UUID id) {
+        return institutionService.get(id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Crear institución")
+    public InstitutionResponse create(@Valid @RequestBody CatalogRequests.SaveInstitution payload) {
+        return institutionService.create(payload);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Editar institución", description = "Reemplaza todos los campos.")
+    public InstitutionResponse update(@PathVariable UUID id,
+                                      @Valid @RequestBody CatalogRequests.SaveInstitution payload) {
+        return institutionService.update(id, payload);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Borrar institución", description = "409 `in-use` si tiene trámites o sugerencias.")
+    public void delete(@PathVariable UUID id) {
+        institutionService.delete(id);
+    }
+}

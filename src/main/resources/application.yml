@@ -1,0 +1,65 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /tramitea-admin-api
+
+spring:
+  application:
+    name: tramitea-admin-be
+
+  # La MISMA base que tramitea-be (tablas tr_*). El esquema es de tramitea-be
+  # (sus migraciones Flyway): acá no hay Flyway y Hibernate solo valida.
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/nexora}
+    username: ${SPRING_DATASOURCE_USERNAME:nexora}
+    password: ${SPRING_DATASOURCE_PASSWORD:nexora}
+    hikari:
+      # El Postgres compartido tiene max_connections=100. El admin tiene
+      # pocos usuarios: con 3 alcanza.
+      maximum-pool-size: ${DB_POOL_SIZE:3}
+      minimum-idle: 1
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        default_batch_fetch_size: 50
+
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+# Login y tokens de darmoz-auth, con la Application "Tramitea". Solo entran
+# los usuarios que tienen el rol admin-role en esa Application.
+darmoz-auth:
+  # URL interna de darmoz-auth (incluye su context path /auth).
+  url: ${DARMOZ_AUTH_URL:http://localhost:8081/auth}
+  # Llave pública RSA de darmoz-auth (en el server se monta de
+  # /opt/infra/services/darmoz-auth/keys/public_key.pem).
+  public-key-path: ${DARMOZ_AUTH_PUBLIC_KEY_PATH:}
+  issuer: ${DARMOZ_AUTH_ISSUER:darmoz-auth}
+  # UUID de la Application "Tramitea" en darmoz-auth (header API_ID).
+  application-id: ${DARMOZ_AUTH_APPLICATION_ID:}
+  admin-role: ${ADMIN_ROLE:ADMIN}
+
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:true}
+    operations-sorter: alpha
+    tags-sorter: alpha
+  default-produces-media-type: application/json
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    com.darmoz.tramiteaadmin: INFO

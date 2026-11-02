@@ -1,0 +1,36 @@
+name: tramitea-admin-be
+
+# Publicada por Traefik en https://<APP_DOMAIN>/tramitea-admin-api (el
+# context path de Spring, así que no hace falta stripprefix). La regla es más
+# larga que la del front del admin (/tramitea-admin), así que tiene prioridad.
+# Mismo dominio que el front: el navegador la llama same-origin, sin CORS.
+services:
+  tramitea-admin-be:
+    image: ${APP_IMAGE:-ghcr.io/darmozcs/tramitea-admin-be:latest}
+    container_name: tramitea-admin-be
+    restart: unless-stopped
+    env_file: .env
+    mem_limit: 512m
+    volumes:
+      # Llave pública de darmoz-auth: no es secreta, se monta de la carpeta de
+      # darmoz-auth para no duplicarla.
+      - ../darmoz-auth/keys/public_key.pem:/app/keys/darmoz_public_key.pem:ro
+    # proxy: Traefik y darmoz-auth. data: Postgres.
+    networks: [proxy, data]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.tramitea-admin-be.rule=Host(`${APP_DOMAIN:-darmozsc.duckdns.org}`) && PathPrefix(`/tramitea-admin-api`)"
+      - "traefik.http.routers.tramitea-admin-be.entrypoints=websecure"
+      - "traefik.http.routers.tramitea-admin-be.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.tramitea-admin-be.middlewares=secure-headers@file,tramitea-admin-be-ratelimit"
+      # Login expuesto a internet: 10 req/s por IP (ráfagas de 30).
+      - "traefik.http.middlewares.tramitea-admin-be-ratelimit.ratelimit.average=10"
+      - "traefik.http.middlewares.tramitea-admin-be-ratelimit.ratelimit.burst=30"
+      - "traefik.http.services.tramitea-admin-be.loadbalancer.server.port=8080"
+
+networks:
+  proxy:
+    external: true
+  data:
+    external: true
