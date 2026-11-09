@@ -10,6 +10,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -26,7 +27,9 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -46,6 +49,9 @@ public abstract class AbstractIntegrationTest {
 
     static final PrivateKey DARMOZ_PRIVATE_KEY;
     static final Path DARMOZ_PUBLIC_KEY_PATH;
+
+    /** Tokens de admin por ubicación (la base es la misma para todas las *IT). */
+    private static final Map<String, String> ADMIN_TOKENS = new ConcurrentHashMap<>();
 
     static {
         POSTGRES.start();
@@ -67,6 +73,9 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     protected ObjectMapper objectMapper;
 
+    @Autowired
+    protected JdbcTemplate jdbcTemplate;
+
     @DynamicPropertySource
     static void registerProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
@@ -77,15 +86,39 @@ public abstract class AbstractIntegrationTest {
         registry.add("darmoz-auth.admin-role", () -> ADMIN_ROLE);
     }
 
-    protected static String adminToken() {
-        return token(List.of("USER", ADMIN_ROLE), APPLICATION_ID, DARMOZ_PRIVATE_KEY);
+    /** Admin de Uruguay (el país entero, con ubicación en el país). */
+    protected String adminToken() {
+        return adminTokenIn("UY");
+    }
+
+    /**
+     * Admin con perfil en tr_users ubicado en {@code locationCode}: el país que
+     * administra sale de ahí (ver AdminScopeService). Uno por ubicación.
+     */
+    protected String adminTokenIn(String locationCode) {
+        return ADMIN_TOKENS.computeIfAbsent(locationCode, code -> {
+            UUID authUserId = UUID.randomUUID();
+            jdbcTemplate.update("""
+                    insert into tr_users (id, email, first_name, last_name, id_auth_user, location_id)
+                    values (?, ?, 'Admin', 'Test', ?, (select id from tr_locations where code = ?))""",
+                    UUID.randomUUID(), "admin-" + authUserId + "@example.com", authUserId, code);
+            return token(authUserId, List.of("USER", ADMIN_ROLE), APPLICATION_ID, DARMOZ_PRIVATE_KEY);
+        });
+    }
+
+    protected UUID locationId(String code) {
+        return jdbcTemplate.queryForObject("select id from tr_locations where code = ?", UUID.class, code);
     }
 
     protected static String token(List<String> roles, String applicationId, PrivateKey key) {
+        return token(UUID.randomUUID(), roles, applicationId, key);
+    }
+
+    protected static String token(UUID subject, List<String> roles, String applicationId, PrivateKey key) {
         Instant now = Instant.now();
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())
-                .subject(UUID.randomUUID().toString())
+                .subject(subject.toString())
                 .claim("email", "admin@example.com")
                 .claim("roles", roles)
                 .claim("permissions", List.of())

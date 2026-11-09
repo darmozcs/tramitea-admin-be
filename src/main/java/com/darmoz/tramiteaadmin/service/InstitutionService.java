@@ -23,23 +23,29 @@ public class InstitutionService {
     private final InstitutionRepository institutionRepository;
     private final ProcedureRepository procedureRepository;
     private final ProcedureSuggestionRepository suggestionRepository;
+    private final AdminScopeService adminScopeService;
 
     public InstitutionService(InstitutionRepository institutionRepository, ProcedureRepository procedureRepository,
-                              ProcedureSuggestionRepository suggestionRepository) {
+                              ProcedureSuggestionRepository suggestionRepository,
+                              AdminScopeService adminScopeService) {
         this.institutionRepository = institutionRepository;
         this.procedureRepository = procedureRepository;
         this.suggestionRepository = suggestionRepository;
+        this.adminScopeService = adminScopeService;
     }
 
+    /** Solo las del país que administra. */
     @Transactional(readOnly = true)
     public List<InstitutionResponse> list(String search) {
+        AdminScopeService.Scope scope = adminScopeService.current();
         String term = TextNormalizer.trimToNull(search);
-        Specification<Institution> spec = term == null ? Specification.where(null) : (root, query, cb) -> {
+        Specification<Institution> inScope = (root, query, cb) -> root.get("locationId").in(scope.locationIds());
+        Specification<Institution> spec = term == null ? inScope : inScope.and((root, query, cb) -> {
             String pattern = "%" + Specs.escapeLike(term.toLowerCase()) + "%";
             return cb.or(
                     cb.like(cb.lower(root.get("name")), pattern, '\\'),
                     cb.like(cb.lower(root.get("acronym")), pattern, '\\'));
-        };
+        });
         return institutionRepository.findAll(spec, Sort.by("acronym")).stream()
                 .map(InstitutionResponse::from)
                 .toList();
@@ -71,15 +77,19 @@ public class InstitutionService {
     }
 
     private InstitutionResponse save(Institution institution, CatalogRequests.SaveInstitution payload) {
+        adminScopeService.current().require(payload.locationId());
         institution.update(payload.acronym().trim(), payload.name().trim(),
                 TextNormalizer.trimToNull(payload.parentEntity()), payload.officialWebsite().trim(),
                 TextNormalizer.trimToNull(payload.contactPhone()), TextNormalizer.trimToNull(payload.contactEmail()),
-                TextNormalizer.trimToNull(payload.logoUrl()));
+                TextNormalizer.trimToNull(payload.logoUrl()), payload.locationId());
         return InstitutionResponse.from(institutionRepository.save(institution));
     }
 
+    /** Las de otros países no existen para este admin: 404. */
     private Institution find(UUID id) {
+        AdminScopeService.Scope scope = adminScopeService.current();
         return institutionRepository.findById(id)
+                .filter(i -> scope.contains(i.getLocationId()))
                 .orElseThrow(() -> new NotFoundException("Institución no encontrada"));
     }
 }

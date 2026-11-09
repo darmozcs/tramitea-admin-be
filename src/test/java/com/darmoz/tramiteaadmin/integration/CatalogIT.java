@@ -77,7 +77,7 @@ class CatalogIT extends AbstractIntegrationTest {
     @Test
     void institutionLifecycle() throws Exception {
         Map<String, Object> payload = Map.of("acronym", "TST", "name", "Institución de prueba",
-                "officialWebsite", "https://example.com");
+                "officialWebsite", "https://example.com", "locationId", locationId("UY-MO"));
         JsonNode created = body(asAdmin(HttpMethod.POST, "/institutions", payload));
         String id = created.get("id").asText();
         assertThat(created.get("createdAt").asText()).isNotBlank();
@@ -161,7 +161,7 @@ class CatalogIT extends AbstractIntegrationTest {
         assertThat(suggestions.has("items")).isTrue();
     }
 
-    private static Map<String, Object> procedurePayload(String name, boolean isFree) {
+    private Map<String, Object> procedurePayload(String name, boolean isFree) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("name", name);
         payload.put("applicationMethod", "HYBRID");
@@ -171,6 +171,7 @@ class CatalogIT extends AbstractIntegrationTest {
         payload.put("imageUrl", "https://example.com/imagen.jpg");
         payload.put("categoryId", IDENTITY_CATEGORY_ID);
         payload.put("institutionId", DNIC_INSTITUTION_ID);
+        payload.put("locationId", locationId("UY"));
         payload.put("appointmentRequired", true);
         payload.put("isFree", isFree);
         payload.put("cost", Map.of("amount", 1500, "currency", "UYU"));

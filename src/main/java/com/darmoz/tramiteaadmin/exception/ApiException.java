@@ -13,6 +13,9 @@ public class ApiException extends RuntimeException {
     public static final String INVALID_PAYLOAD = "invalid-payload";
     public static final String DUPLICATED = "duplicated";
     public static final String IN_USE = "in-use";
+    public static final String NO_LOCATION = "no-location";
+    public static final String LOCATION_NOT_ALLOWED = "location-not-allowed";
+    public static final String ALREADY_REVIEWED = "already-reviewed";
 
     private final HttpStatus status;
     private final String code;
@@ -29,6 +32,10 @@ public class ApiException extends RuntimeException {
 
     public static ApiException conflict(String code, String message) {
         return new ApiException(HttpStatus.CONFLICT, code, message);
+    }
+
+    public static ApiException forbidden(String code, String message) {
+        return new ApiException(HttpStatus.FORBIDDEN, code, message);
     }
 
     public HttpStatus getStatus() {

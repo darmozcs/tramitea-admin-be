@@ -32,21 +32,28 @@ public class ProcedureService {
     private final ProcedureRepository procedureRepository;
     private final CategoryRepository categoryRepository;
     private final InstitutionRepository institutionRepository;
+    private final AdminScopeService adminScopeService;
 
     public ProcedureService(ProcedureRepository procedureRepository, CategoryRepository categoryRepository,
-                            InstitutionRepository institutionRepository) {
+                            InstitutionRepository institutionRepository, AdminScopeService adminScopeService) {
         this.procedureRepository = procedureRepository;
         this.categoryRepository = categoryRepository;
         this.institutionRepository = institutionRepository;
+        this.adminScopeService = adminScopeService;
     }
 
-    /** Mismos filtros que el listado de tramitea-be, que es lo que hoy usa el admin. */
+    /**
+     * Mismos filtros que el listado de tramitea-be, que es lo que hoy usa el
+     * admin, solo con trámites del país que administra (habilitados o no).
+     */
     @Transactional(readOnly = true)
     public PaginatedResponse<ProcedureResponse> list(String searchTerm, List<UUID> categoryIds,
                                                      List<UUID> institutionIds, boolean isFreeOnly,
                                                      int page, int pageSize) {
+        AdminScopeService.Scope scope = adminScopeService.current();
         Specification<Procedure> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            predicates.add(root.get("locationId").in(scope.locationIds()));
             String term = TextNormalizer.normalize(searchTerm).trim();
             if (!term.isEmpty()) {
                 predicates.add(cb.like(root.get("searchText"), "%" + Specs.escapeLike(term) + "%", '\\'));
@@ -96,12 +103,18 @@ public class ProcedureService {
         procedureRepository.delete(find(id));
     }
 
+    /** La ubicación tiene que ser del país del admin, y la institución también. */
     private ProcedureResponse save(Procedure procedure, CatalogRequests.SaveProcedure payload) {
+        AdminScopeService.Scope scope = adminScopeService.current();
+        scope.require(payload.locationId());
         if (!categoryRepository.existsById(payload.categoryId())) {
             throw ApiException.badRequest("categoryId no existe");
         }
-        if (!institutionRepository.existsById(payload.institutionId())) {
-            throw ApiException.badRequest("institutionId no existe");
+        boolean institutionInScope = institutionRepository.findById(payload.institutionId())
+                .map(i -> scope.contains(i.getLocationId()))
+                .orElse(false);
+        if (!institutionInScope) {
+            throw ApiException.badRequest("institutionId no existe o es de otro país");
         }
         // El front muestra el costo siempre que no sea gratis.
         if (!payload.isFree() && payload.cost() == null) {
@@ -121,7 +134,7 @@ public class ProcedureService {
         CatalogRequests.Validity validity = payload.validity();
         procedure.update(new Procedure.Details(
                 name, payload.applicationMethod(), payload.authenticationLevel(), payload.group(), description,
-                payload.imageUrl().trim(), payload.categoryId(), payload.institutionId(),
+                payload.imageUrl().trim(), payload.categoryId(), payload.institutionId(), payload.locationId(),
                 payload.appointmentRequired(), payload.isFree(),
                 cost == null ? null : cost.amount(),
                 cost == null ? null : cost.currency(),
@@ -180,8 +193,12 @@ public class ProcedureService {
         return value;
     }
 
+    /** Los trámites de otros países no existen para este admin: 404. */
     private Procedure find(UUID id) {
-        return procedureRepository.findById(id).orElseThrow(() -> new NotFoundException("Trámite no encontrado"));
+        AdminScopeService.Scope scope = adminScopeService.current();
+        return procedureRepository.findById(id)
+                .filter(p -> scope.contains(p.getLocationId()))
+                .orElseThrow(() -> new NotFoundException("Trámite no encontrado"));
     }
 
     private static boolean isPresent(Collection<?> values) {

@@ -37,6 +37,9 @@ public class Institution {
     @Column(name = "logo_url")
     private String logoUrl;
 
+    @Column(name = "location_id", nullable = false)
+    private UUID locationId;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -52,7 +55,7 @@ public class Institution {
     }
 
     public void update(String acronym, String name, String parentEntity, String officialWebsite,
-                       String contactPhone, String contactEmail, String logoUrl) {
+                       String contactPhone, String contactEmail, String logoUrl, UUID locationId) {
         this.acronym = acronym;
         this.name = name;
         this.parentEntity = parentEntity;
@@ -60,6 +63,7 @@ public class Institution {
         this.contactPhone = contactPhone;
         this.contactEmail = contactEmail;
         this.logoUrl = logoUrl;
+        this.locationId = locationId;
         this.updatedAt = Instant.now();
     }
 
@@ -71,6 +75,7 @@ public class Institution {
     public String getContactPhone() { return contactPhone; }
     public String getContactEmail() { return contactEmail; }
     public String getLogoUrl() { return logoUrl; }
+    public UUID getLocationId() { return locationId; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }
