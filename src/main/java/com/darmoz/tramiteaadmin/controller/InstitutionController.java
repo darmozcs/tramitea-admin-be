@@ -33,26 +33,26 @@ public class InstitutionController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar instituciones", description = "`search` busca en nombre y sigla. Ordenadas por sigla.")
+    @Operation(summary = "Listar instituciones", description = "`search` busca en nombre y sigla. Ordenadas por sigla. Solo las del país del admin.")
     public List<InstitutionResponse> list(@RequestParam(required = false) String search) {
         return institutionService.list(search);
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Detalle de una institución")
+    @Operation(summary = "Detalle de una institución", description = "404 si es de otro país.")
     public InstitutionResponse get(@PathVariable UUID id) {
         return institutionService.get(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Crear institución")
+    @Operation(summary = "Crear institución", description = "`locationId` obligatorio: el país del admin o una de sus provincias; si es de otro país, 403 `location-not-allowed`.")
     public InstitutionResponse create(@Valid @RequestBody CatalogRequests.SaveInstitution payload) {
         return institutionService.create(payload);
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Editar institución", description = "Reemplaza todos los campos.")
+    @Operation(summary = "Editar institución", description = "Reemplaza todos los campos. Mismas reglas de `locationId` que el alta; 404 si es de otro país.")
     public InstitutionResponse update(@PathVariable UUID id,
                                       @Valid @RequestBody CatalogRequests.SaveInstitution payload) {
         return institutionService.update(id, payload);

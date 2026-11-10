@@ -34,7 +34,7 @@ public class ProcedureController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar trámites", description = "Mismos parámetros que `GET /tramitea-api/procedures`: listas separadas por coma, `page` desde 1, `pageSize` de 1 a 100. Ordenados por `displayOrder`.")
+    @Operation(summary = "Listar trámites", description = "Mismos parámetros que `GET /tramitea-api/procedures`: listas separadas por coma, `page` desde 1, `pageSize` de 1 a 100. Ordenados por `displayOrder`. Solo trámites del país del admin, incluidos los de ubicaciones deshabilitadas.")
     public PaginatedResponse<ProcedureResponse> list(
             @RequestParam(required = false) String searchTerm,
             @RequestParam(required = false) List<UUID> categoryIds,
@@ -46,20 +46,20 @@ public class ProcedureController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Detalle de un trámite", description = "Por id (no suma visitas, a diferencia del detalle público por slug).")
+    @Operation(summary = "Detalle de un trámite", description = "Por id (no suma visitas, a diferencia del detalle público por slug). 404 si es de otro país.")
     public ProcedureResponse get(@PathVariable UUID id) {
         return procedureService.get(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Crear trámite", description = "Con requisitos, pasos y FAQs; su orden es el del array. Sin `slug` se arma a partir del nombre. `cost` es obligatorio si `isFree` es false y se ignora si es true. 400 si `categoryId` o `institutionId` no existen; 409 `duplicated` si el slug ya está usado.")
+    @Operation(summary = "Crear trámite", description = "Con requisitos, pasos y FAQs; su orden es el del array. Sin `slug` se arma a partir del nombre. `cost` es obligatorio si `isFree` es false y se ignora si es true. 400 si `categoryId` o `institutionId` no existen; 409 `duplicated` si el slug ya está usado. `locationId` obligatorio: el país del admin (trámite nacional) o una de sus provincias; si es de otro país, 403 `location-not-allowed`. La institución también tiene que ser de su país (si no, 400).")
     public ProcedureResponse create(@Valid @RequestBody CatalogRequests.SaveProcedure payload) {
         return procedureService.create(payload);
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Editar trámite", description = "Reemplaza todo, incluidos requisitos, pasos y FAQs (los ids de esos hijos cambian). Mismas reglas que el alta.")
+    @Operation(summary = "Editar trámite", description = "Reemplaza todo, incluidos requisitos, pasos y FAQs (los ids de esos hijos cambian). Mismas reglas que el alta. 404 si el trámite es de otro país.")
     public ProcedureResponse update(@PathVariable UUID id,
                                     @Valid @RequestBody CatalogRequests.SaveProcedure payload) {
         return procedureService.update(id, payload);
@@ -67,7 +67,7 @@ public class ProcedureController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Borrar trámite", description = "Borra también sus comentarios, votos y las tareas guardadas de los ciudadanos.")
+    @Operation(summary = "Borrar trámite", description = "Borra también sus comentarios, votos y las tareas guardadas de los ciudadanos. 404 si es de otro país.")
     public void delete(@PathVariable UUID id) {
         procedureService.delete(id);
     }
