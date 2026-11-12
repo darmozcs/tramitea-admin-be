@@ -27,6 +27,8 @@ class OpenApiIT extends AbstractIntegrationTest {
         JsonNode docs = body(response);
         assertThat(docs.get("paths").has("/categories/{id}")).isTrue();
         assertThat(docs.get("paths").has("/stats")).isTrue();
+        assertThat(docs.get("paths").has("/categories/catalog")).isTrue();
+        assertThat(docs.get("paths").has("/institutions/catalog")).isTrue();
         assertThat(docs.get("paths").has("/locations/{id}")).isTrue();
         assertThat(docs.get("paths").has("/suggestions/{id}/accept")).isTrue();
         assertThat(docs.get("paths").has("/suggestions/{id}/reject")).isTrue();

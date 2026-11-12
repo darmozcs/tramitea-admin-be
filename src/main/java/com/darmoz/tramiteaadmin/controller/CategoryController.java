@@ -2,6 +2,7 @@ package com.darmoz.tramiteaadmin.controller;
 
 import com.darmoz.tramiteaadmin.dto.request.CatalogRequests;
 import com.darmoz.tramiteaadmin.dto.response.CategoryResponse;
+import com.darmoz.tramiteaadmin.dto.response.PaginatedResponse;
 import com.darmoz.tramiteaadmin.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,10 +34,19 @@ public class CategoryController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar categorías", description = "Incluye las inactivas. `search` busca en nombre y código; `isActive` filtra por estado. Ordenadas por `displayOrder`.")
-    public List<CategoryResponse> list(@RequestParam(required = false) String search,
-                                       @RequestParam(required = false) Boolean isActive) {
-        return categoryService.list(search, isActive);
+    @Operation(summary = "Listar categorías", description = "Paginado. Incluye las inactivas. `search` busca en nombre y código; `isActive` filtra por estado. Ordenadas por `displayOrder`. `page` desde 1, `pageSize` de 1 a 100. Para combos, `GET /categories/catalog`.")
+    public PaginatedResponse<CategoryResponse> list(@RequestParam(required = false) String search,
+                                                    @RequestParam(required = false) Boolean isActive,
+                                                    @RequestParam(defaultValue = "1") int page,
+                                                    @RequestParam(defaultValue = "12") int pageSize) {
+        return categoryService.list(search, isActive, page, pageSize);
+    }
+
+    @GetMapping("/catalog")
+    @Operation(summary = "Catálogo de categorías", description = "Todas, sin paginar, para llenar combos. Mismos filtros y orden que el listado; para el formulario de trámite conviene `?isActive=true`.")
+    public List<CategoryResponse> catalog(@RequestParam(required = false) String search,
+                                          @RequestParam(required = false) Boolean isActive) {
+        return categoryService.catalog(search, isActive);
     }
 
     @GetMapping("/{id}")

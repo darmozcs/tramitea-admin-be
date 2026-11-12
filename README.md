@@ -61,8 +61,8 @@ Base:
 | Login | `POST /auth/login`, `/auth/refresh`, `/auth/logout` |
 | Dashboard | `GET /stats` |
 | Trámites | `GET /procedures` (mismos filtros que tramitea-be), `GET/PUT/DELETE /procedures/{id}`, `POST /procedures` |
-| Categorías | `GET /categories?search=&isActive=`, `GET/PUT/DELETE /categories/{id}`, `POST /categories` |
-| Instituciones | `GET /institutions?search=`, `GET/PUT/DELETE /institutions/{id}`, `POST /institutions` |
+| Categorías | `GET /categories?search=&isActive=&page=&pageSize=` (paginado), `GET /categories/catalog?search=&isActive=` (todas, para combos), `GET/PUT/DELETE /categories/{id}`, `POST /categories` |
+| Instituciones | `GET /institutions?search=&page=&pageSize=` (paginado), `GET /institutions/catalog?search=` (todas, para combos), `GET/PUT/DELETE /institutions/{id}`, `POST /institutions` |
 | Sugeridos | `GET /suggestions?page=&pageSize=` |
 
 Reglas:

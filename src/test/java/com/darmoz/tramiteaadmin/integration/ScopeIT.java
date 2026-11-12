@@ -45,7 +45,8 @@ class ScopeIT extends AbstractIntegrationTest {
                 .isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(call(HttpMethod.DELETE, "/procedures/" + CEDULA_ID, null, brazil).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(body(call(HttpMethod.GET, "/institutions", null, brazil))).isEmpty();
+        assertThat(body(call(HttpMethod.GET, "/institutions", null, brazil)).get("total").asInt()).isZero();
+        assertThat(body(call(HttpMethod.GET, "/institutions/catalog", null, brazil))).isEmpty();
         assertThat(body(call(HttpMethod.GET, "/stats", null, brazil)).get("procedures").asInt()).isZero();
 
         ResponseEntity<String> inUruguay = call(HttpMethod.POST, "/procedures",

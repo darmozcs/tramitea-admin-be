@@ -2,6 +2,7 @@ package com.darmoz.tramiteaadmin.service;
 
 import com.darmoz.tramiteaadmin.dto.request.CatalogRequests;
 import com.darmoz.tramiteaadmin.dto.response.InstitutionResponse;
+import com.darmoz.tramiteaadmin.dto.response.PaginatedResponse;
 import com.darmoz.tramiteaadmin.entity.Institution;
 import com.darmoz.tramiteaadmin.exception.ApiException;
 import com.darmoz.tramiteaadmin.exception.NotFoundException;
@@ -34,21 +35,39 @@ public class InstitutionService {
         this.adminScopeService = adminScopeService;
     }
 
-    /** Solo las del país que administra. */
+    /** Orden del listado y del catálogo; `id` al final para que la paginación sea estable. */
+    private static final Sort ORDER = Sort.by("acronym", "id");
+
+    /** Paginado, para la pantalla de instituciones. Solo las del país que administra. */
     @Transactional(readOnly = true)
-    public List<InstitutionResponse> list(String search) {
+    public PaginatedResponse<InstitutionResponse> list(String search, int page, int pageSize) {
+        Specification<Institution> spec = spec(search);
+        long total = institutionRepository.count(spec);
+        Paging.Window window = Paging.window(total, page, pageSize, ORDER);
+        List<InstitutionResponse> items = institutionRepository.findAll(spec, window.pageRequest())
+                .map(InstitutionResponse::from)
+                .getContent();
+        return window.response(total, items);
+    }
+
+    /** Todas las del país que administra, sin paginar, para los combos. */
+    @Transactional(readOnly = true)
+    public List<InstitutionResponse> catalog(String search) {
+        return institutionRepository.findAll(spec(search), ORDER).stream()
+                .map(InstitutionResponse::from)
+                .toList();
+    }
+
+    private Specification<Institution> spec(String search) {
         AdminScopeService.Scope scope = adminScopeService.current();
         String term = TextNormalizer.trimToNull(search);
         Specification<Institution> inScope = (root, query, cb) -> root.get("locationId").in(scope.locationIds());
-        Specification<Institution> spec = term == null ? inScope : inScope.and((root, query, cb) -> {
+        return term == null ? inScope : inScope.and((root, query, cb) -> {
             String pattern = "%" + Specs.escapeLike(term.toLowerCase()) + "%";
             return cb.or(
                     cb.like(cb.lower(root.get("name")), pattern, '\\'),
                     cb.like(cb.lower(root.get("acronym")), pattern, '\\'));
         });
-        return institutionRepository.findAll(spec, Sort.by("acronym")).stream()
-                .map(InstitutionResponse::from)
-                .toList();
     }
 
     @Transactional(readOnly = true)

@@ -43,7 +43,8 @@ class CatalogIT extends AbstractIntegrationTest {
 
         // Las inactivas también se listan (tramitea-be las oculta).
         JsonNode inactive = body(asAdmin(HttpMethod.GET, "/categories?isActive=false&search=" + code, null));
-        assertThat(inactive).hasSize(1);
+        assertThat(inactive.get("total").asInt()).isEqualTo(1);
+        assertThat(inactive.get("items")).hasSize(1);
 
         Map<String, Object> update = new HashMap<>(payload);
         update.put("name", "Renombrada");
@@ -75,6 +76,33 @@ class CatalogIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void categoriesArePaginatedAndCatalogIsNot() throws Exception {
+        JsonNode page = body(asAdmin(HttpMethod.GET, "/categories?page=2&pageSize=2", null));
+        int total = page.get("total").asInt();
+        assertThat(total).isGreaterThanOrEqualTo(8);
+        assertThat(page.get("currentPage").asInt()).isEqualTo(2);
+        assertThat(page.get("totalPages").asInt()).isEqualTo((total + 1) / 2);
+        assertThat(page.get("items")).hasSize(2);
+
+        // El catálogo trae todas en un array, con los mismos filtros.
+        assertThat(body(asAdmin(HttpMethod.GET, "/categories/catalog", null))).hasSize(total);
+        JsonNode active = body(asAdmin(HttpMethod.GET, "/categories/catalog?isActive=true", null));
+        assertThat(active).allMatch(c -> c.get("isActive").asBoolean());
+        assertThat(active).hasSize(body(asAdmin(HttpMethod.GET, "/categories?isActive=true", null))
+                .get("total").asInt());
+    }
+
+    @Test
+    void institutionsArePaginated() throws Exception {
+        JsonNode page = body(asAdmin(HttpMethod.GET, "/institutions?pageSize=3", null));
+        int total = page.get("total").asInt();
+        assertThat(total).isPositive();
+        assertThat(page.get("currentPage").asInt()).isEqualTo(1);
+        assertThat(page.get("items")).hasSize(Math.min(3, total));
+        assertThat(body(asAdmin(HttpMethod.GET, "/institutions/catalog", null))).hasSize(total);
+    }
+
+    @Test
     void institutionLifecycle() throws Exception {
         Map<String, Object> payload = Map.of("acronym", "TST", "name", "Institución de prueba",
                 "officialWebsite", "https://example.com", "locationId", locationId("UY-MO"));
@@ -82,7 +110,9 @@ class CatalogIT extends AbstractIntegrationTest {
         String id = created.get("id").asText();
         assertThat(created.get("createdAt").asText()).isNotBlank();
 
-        assertThat(body(asAdmin(HttpMethod.GET, "/institutions?search=prueba", null)))
+        assertThat(body(asAdmin(HttpMethod.GET, "/institutions?search=prueba", null)).get("items"))
+                .anyMatch(i -> i.get("id").asText().equals(id));
+        assertThat(body(asAdmin(HttpMethod.GET, "/institutions/catalog?search=prueba", null)))
                 .anyMatch(i -> i.get("id").asText().equals(id));
 
         assertThat(asAdmin(HttpMethod.DELETE, "/institutions/" + DNIC_INSTITUTION_ID, null).getStatusCode())
