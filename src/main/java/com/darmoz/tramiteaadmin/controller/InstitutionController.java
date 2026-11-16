@@ -2,6 +2,7 @@ package com.darmoz.tramiteaadmin.controller;
 
 import com.darmoz.tramiteaadmin.dto.request.CatalogRequests;
 import com.darmoz.tramiteaadmin.dto.response.InstitutionResponse;
+import com.darmoz.tramiteaadmin.dto.response.PaginatedResponse;
 import com.darmoz.tramiteaadmin.service.InstitutionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,26 +34,34 @@ public class InstitutionController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar instituciones", description = "`search` busca en nombre y sigla. Ordenadas por sigla.")
-    public List<InstitutionResponse> list(@RequestParam(required = false) String search) {
-        return institutionService.list(search);
+    @Operation(summary = "Listar instituciones", description = "Paginado. `search` busca en nombre y sigla. Ordenadas por sigla. Solo las del país del admin. `page` desde 1, `pageSize` de 1 a 100. Para combos, `GET /institutions/catalog`.")
+    public PaginatedResponse<InstitutionResponse> list(@RequestParam(required = false) String search,
+                                                       @RequestParam(defaultValue = "1") int page,
+                                                       @RequestParam(defaultValue = "12") int pageSize) {
+        return institutionService.list(search, page, pageSize);
+    }
+
+    @GetMapping("/catalog")
+    @Operation(summary = "Catálogo de instituciones", description = "Todas las del país del admin, sin paginar, para llenar combos. Mismo filtro `search` y mismo orden que el listado.")
+    public List<InstitutionResponse> catalog(@RequestParam(required = false) String search) {
+        return institutionService.catalog(search);
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Detalle de una institución")
+    @Operation(summary = "Detalle de una institución", description = "404 si es de otro país.")
     public InstitutionResponse get(@PathVariable UUID id) {
         return institutionService.get(id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Crear institución")
+    @Operation(summary = "Crear institución", description = "`locationId` obligatorio: el país del admin o una de sus provincias; si es de otro país, 403 `location-not-allowed`.")
     public InstitutionResponse create(@Valid @RequestBody CatalogRequests.SaveInstitution payload) {
         return institutionService.create(payload);
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Editar institución", description = "Reemplaza todos los campos.")
+    @Operation(summary = "Editar institución", description = "Reemplaza todos los campos. Mismas reglas de `locationId` que el alta; 404 si es de otro país.")
     public InstitutionResponse update(@PathVariable UUID id,
                                       @Valid @RequestBody CatalogRequests.SaveInstitution payload) {
         return institutionService.update(id, payload);

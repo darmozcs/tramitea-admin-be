@@ -33,12 +33,16 @@ public class OpenApiConfig {
                                 instituciones, sugerencias y métricas. Usa la misma base que la API pública \
                                 (tramitea-be), así que los cambios se ven en la web al instante.
 
+                                Alcance: cada admin administra el país de su ubicación (`location_id` de su fila \
+                                en tr_users): ese país y sus provincias. Lo de otros países responde 404; si el \
+                                admin no tiene ubicación, todo responde 403 `no-location`.
+
                                 Autenticación: `POST /auth/login` (credenciales de darmoz-auth, Application \
                                 Tramitea). Solo entran usuarios con el rol admin. El resto de los endpoints lleva \
                                 `Authorization: Bearer <accessToken>`: sin token 401, sin el rol 403.
 
                                 Errores: `{ timestamp, status, error, message }`; `error` lleva un código estable \
-                                (`not-admin`, `duplicated`, `in-use`, `invalid-payload`...). Fechas ISO-8601 en \
+                                (`not-admin`, `duplicated`, `in-use`, `invalid-payload`, `no-location`, `location-not-allowed`, `already-reviewed`...). Fechas ISO-8601 en \
                                 UTC; los campos null se omiten."""))
                 // Relativo: Swagger UI lo resuelve contra el host desde el que se abre.
                 .servers(List.of(new Server().url("/tramitea-admin-api")))

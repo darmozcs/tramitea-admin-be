@@ -57,6 +57,10 @@ public class Procedure {
     @Column(name = "institution_id", nullable = false)
     private UUID institutionId;
 
+    /** País (trámite nacional) o provincia. */
+    @Column(name = "location_id", nullable = false)
+    private UUID locationId;
+
     @Column(name = "appointment_required", nullable = false)
     private boolean appointmentRequired;
 
@@ -134,6 +138,7 @@ public class Procedure {
         this.imageUrl = d.imageUrl();
         this.categoryId = d.categoryId();
         this.institutionId = d.institutionId();
+        this.locationId = d.locationId();
         this.appointmentRequired = d.appointmentRequired();
         this.free = d.free();
         this.costAmount = d.costAmount();
@@ -160,10 +165,10 @@ public class Procedure {
 
     public record Details(String name, ApplicationMethod applicationMethod, AuthenticationLevel authenticationLevel,
                           ProcedureGroup group, String description, String imageUrl, UUID categoryId,
-                          UUID institutionId, boolean appointmentRequired, boolean free, BigDecimal costAmount,
-                          Currency costCurrency, String costComments, String validityValue, String validityUnit,
-                          String validityComments, String estimatedDeliveryTime, String slugEs, String slugEn,
-                          int displayOrder) {
+                          UUID institutionId, UUID locationId, boolean appointmentRequired, boolean free,
+                          BigDecimal costAmount, Currency costCurrency, String costComments, String validityValue,
+                          String validityUnit, String validityComments, String estimatedDeliveryTime,
+                          String slugEs, String slugEn, int displayOrder) {
     }
 
     public UUID getId() { return id; }
@@ -175,6 +180,7 @@ public class Procedure {
     public String getImageUrl() { return imageUrl; }
     public UUID getCategoryId() { return categoryId; }
     public UUID getInstitutionId() { return institutionId; }
+    public UUID getLocationId() { return locationId; }
     public boolean isAppointmentRequired() { return appointmentRequired; }
     public boolean isFree() { return free; }
     public BigDecimal getCostAmount() { return costAmount; }

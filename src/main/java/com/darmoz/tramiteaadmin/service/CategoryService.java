@@ -2,6 +2,7 @@ package com.darmoz.tramiteaadmin.service;
 
 import com.darmoz.tramiteaadmin.dto.request.CatalogRequests;
 import com.darmoz.tramiteaadmin.dto.response.CategoryResponse;
+import com.darmoz.tramiteaadmin.dto.response.PaginatedResponse;
 import com.darmoz.tramiteaadmin.entity.Category;
 import com.darmoz.tramiteaadmin.exception.ApiException;
 import com.darmoz.tramiteaadmin.exception.NotFoundException;
@@ -30,9 +31,31 @@ public class CategoryService {
         this.procedureRepository = procedureRepository;
     }
 
+    /** Orden del listado y del catálogo; `id` al final para que la paginación sea estable. */
+    private static final Sort ORDER = Sort.by("displayOrder", "name", "id");
+
+    /** Paginado, para la pantalla de categorías. */
     @Transactional(readOnly = true)
-    public List<CategoryResponse> list(String search, Boolean isActive) {
-        Specification<Category> spec = (root, query, cb) -> {
+    public PaginatedResponse<CategoryResponse> list(String search, Boolean isActive, int page, int pageSize) {
+        Specification<Category> spec = spec(search, isActive);
+        long total = categoryRepository.count(spec);
+        Paging.Window window = Paging.window(total, page, pageSize, ORDER);
+        List<CategoryResponse> items = categoryRepository.findAll(spec, window.pageRequest())
+                .map(CategoryResponse::from)
+                .getContent();
+        return window.response(total, items);
+    }
+
+    /** Todas, sin paginar, para los combos. */
+    @Transactional(readOnly = true)
+    public List<CategoryResponse> catalog(String search, Boolean isActive) {
+        return categoryRepository.findAll(spec(search, isActive), ORDER).stream()
+                .map(CategoryResponse::from)
+                .toList();
+    }
+
+    private static Specification<Category> spec(String search, Boolean isActive) {
+        return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             String term = TextNormalizer.trimToNull(search);
             if (term != null) {
@@ -46,9 +69,6 @@ public class CategoryService {
             }
             return cb.and(predicates.toArray(Predicate[]::new));
         };
-        return categoryRepository.findAll(spec, Sort.by("displayOrder", "name")).stream()
-                .map(CategoryResponse::from)
-                .toList();
     }
 
     @Transactional(readOnly = true)

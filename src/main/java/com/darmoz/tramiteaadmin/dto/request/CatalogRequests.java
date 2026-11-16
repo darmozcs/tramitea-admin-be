@@ -44,7 +44,9 @@ public final class CatalogRequests {
             @NotBlank @Size(max = 500) String officialWebsite,
             @Size(max = 100) String contactPhone,
             @Email @Size(max = 255) String contactEmail,
-            @Size(max = 500) String logoUrl) {
+            @Size(max = 500) String logoUrl,
+            // País o provincia del país que administra el admin.
+            @NotNull UUID locationId) {
     }
 
     /**
@@ -60,6 +62,8 @@ public final class CatalogRequests {
             @NotBlank @Size(max = 500) String imageUrl,
             @NotNull UUID categoryId,
             @NotNull UUID institutionId,
+            // País (trámite nacional) o provincia del país que administra el admin.
+            @NotNull UUID locationId,
             boolean appointmentRequired,
             boolean isFree,
             @Valid Cost cost,
@@ -110,5 +114,11 @@ public final class CatalogRequests {
     public record Faq(
             @NotBlank @Size(max = 1000) String question,
             @NotBlank String answer) {
+    }
+
+    public record RejectSuggestion(@Size(max = 1000) String reason) {
+    }
+
+    public record UpdateLocation(@NotNull Boolean isActive) {
     }
 }
