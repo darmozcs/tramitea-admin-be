@@ -87,6 +87,47 @@ class ScopeIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void globalAdminManagesEveryCountry() throws Exception {
+        String global = adminTokenIn("GLOBAL");
+
+        // Todos los países y provincias, sin GLOBAL: cada país seguido de sus provincias.
+        JsonNode locations = body(call(HttpMethod.GET, "/locations", null, global));
+        Integer expected = jdbcTemplate.queryForObject(
+                "select count(*) from tr_locations where type <> 'GLOBAL'", Integer.class);
+        assertThat(locations).hasSize(expected);
+        assertThat(locations).noneMatch(l -> l.get("code").asText().equals("GLOBAL"));
+        assertThat(locations.get(0).get("code").asText()).isEqualTo("BR");
+        assertThat(locations.get(1).get("parentId").asText()).isEqualTo(locationId("BR").toString());
+
+        // Ve lo de Uruguay y puede crear en otro país.
+        assertThat(body(call(HttpMethod.GET, "/procedures/" + CEDULA_ID, null, global)).get("locationId").asText())
+                .isEqualTo(locationId("UY").toString());
+        JsonNode institution = body(call(HttpMethod.POST, "/institutions", Map.of("acronym", "AEAT",
+                "name", "Agencia Tributaria", "officialWebsite", "https://sede.agenciatributaria.gob.es",
+                "locationId", locationId("ES")), global));
+        String institutionId = institution.get("id").asText();
+        JsonNode madrid = body(call(HttpMethod.POST, "/procedures",
+                procedurePayload(locationId("ES-M"), institutionId), global));
+        assertThat(body(call(HttpMethod.GET, "/stats", null, global)).get("procedures").asInt())
+                .isGreaterThan(body(asAdmin(HttpMethod.GET, "/stats", null)).get("procedures").asInt());
+
+        // GLOBAL es solo alcance: no se asigna ni se habilita/deshabilita.
+        ResponseEntity<String> inGlobal = call(HttpMethod.POST, "/procedures",
+                procedurePayload(locationId("GLOBAL"), DNIC_INSTITUTION_ID), global);
+        assertThat(inGlobal.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(errorCode(inGlobal)).isEqualTo("location-not-allowed");
+        assertThat(call(HttpMethod.PATCH, "/locations/" + locationId("GLOBAL"), Map.of("isActive", false), global)
+                .getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+        // Un admin de país no ve GLOBAL ni puede usarla.
+        assertThat(body(asAdmin(HttpMethod.GET, "/locations", null)))
+                .noneMatch(l -> l.get("code").asText().equals("GLOBAL"));
+
+        call(HttpMethod.DELETE, "/procedures/" + madrid.get("id").asText(), null, global);
+        call(HttpMethod.DELETE, "/institutions/" + institutionId, null, global);
+    }
+
+    @Test
     void locationsAreListedAndToggledOnlyWithinTheCountry() throws Exception {
         JsonNode uruguay = body(asAdmin(HttpMethod.GET, "/locations", null));
         assertThat(uruguay).hasSize(20);

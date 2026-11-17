@@ -54,10 +54,17 @@ public class StatsService {
     }
 
     /**
-     * Ciudadanos con perfil en Tramitea (tr_users) y ubicación en el país.
+     * Ciudadanos con perfil en Tramitea (tr_users) y ubicación en el país;
+     * para un admin global ({@code countryId} null), en cualquier país.
      * Sin entidad propia: el admin no edita usuarios.
      */
     private long countRegisteredUsers(UUID countryId) {
+        if (countryId == null) {
+            Long all = jdbcTemplate.queryForObject("""
+                    select count(*) from tr_users
+                    where location_id in (select id from tr_locations where type <> 'GLOBAL')""", Long.class);
+            return all == null ? 0 : all;
+        }
         Long count = jdbcTemplate.queryForObject("""
                 select count(*) from tr_users
                 where location_id in (select id from tr_locations where id = ? or parent_id = ?)""",

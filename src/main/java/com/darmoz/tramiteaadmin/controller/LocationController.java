@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
-@Tag(name = "Ubicaciones", description = "País que administra el admin y sus provincias.")
+@Tag(name = "Ubicaciones", description = "País que administra el admin y sus provincias. Un admin con ubicación GLOBAL administra todos los países.")
 @RestController
 @RequestMapping("/locations")
 public class LocationController {
@@ -28,7 +28,7 @@ public class LocationController {
     }
 
     @GetMapping
-    @Operation(summary = "Ubicaciones del admin", description = "Su país primero y después sus provincias por nombre, habilitadas o no.")
+    @Operation(summary = "Ubicaciones del admin", description = "Su país primero y después sus provincias por nombre, habilitadas o no. Para un admin global, todos los países, cada uno seguido de sus provincias; la ubicación GLOBAL no se lista.")
     public List<LocationResponse> list() {
         return locationService.list();
     }

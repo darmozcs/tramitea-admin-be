@@ -1,6 +1,7 @@
 package com.darmoz.tramiteaadmin.service;
 
 import com.darmoz.tramiteaadmin.entity.Location;
+import com.darmoz.tramiteaadmin.entity.LocationType;
 import com.darmoz.tramiteaadmin.exception.ApiException;
 import com.darmoz.tramiteaadmin.repository.LocationRepository;
 import com.darmoz.tramiteaadmin.security.AuthenticatedAdmin;
@@ -18,7 +19,8 @@ import java.util.stream.Collectors;
 /**
  * País que administra el admin del request: el de su ubicación en tr_users
  * (la misma cuenta que usa en la web, vinculada por id_auth_user). Si su
- * ubicación es una provincia, administra igual todo el país.
+ * ubicación es una provincia, administra igual todo el país. Si es la
+ * ubicación GLOBAL (V5__global_location.sql), administra todos los países.
  */
 @Service
 public class AdminScopeService {
@@ -31,8 +33,17 @@ public class AdminScopeService {
         this.locationRepository = locationRepository;
     }
 
-    /** País del admin y todas sus ubicaciones (el país y sus provincias, habilitadas o no). */
+    /**
+     * País del admin y todas sus ubicaciones (el país y sus provincias,
+     * habilitadas o no). Un admin global tiene {@code countryId} null y todos
+     * los países y provincias; GLOBAL no está en {@code locationIds}, así que
+     * nunca se puede asignar a un trámite, institución o sugerencia.
+     */
     public record Scope(UUID adminAuthUserId, UUID countryId, Set<UUID> locationIds) {
+
+        public boolean isGlobal() {
+            return countryId == null;
+        }
 
         public boolean contains(UUID locationId) {
             return locationId != null && locationIds.contains(locationId);
@@ -60,8 +71,11 @@ public class AdminScopeService {
                     "Tu usuario no tiene ubicación en Tramitea: asignale una provincia o un país en tr_users");
         }
 
-        UUID countryId = home.getCountryId();
-        Set<UUID> ids = locationRepository.findCountryAndProvinces(countryId).stream()
+        UUID countryId = home.getType() == LocationType.GLOBAL ? null : home.getCountryId();
+        List<Location> scoped = countryId == null
+                ? locationRepository.findAllCountriesAndProvinces()
+                : locationRepository.findCountryAndProvinces(countryId);
+        Set<UUID> ids = scoped.stream()
                 .map(Location::getId)
                 .collect(Collectors.toUnmodifiableSet());
         return new Scope(admin.authUserId(), countryId, ids);
