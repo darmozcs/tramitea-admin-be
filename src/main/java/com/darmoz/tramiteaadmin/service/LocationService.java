@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * País del admin y sus provincias. Deshabilitar una ubicación oculta sus
+ * País del admin y sus provincias (o todos, si es admin global). Deshabilitar una ubicación oculta sus
  * trámites en la web; deshabilitar el país oculta todos los del país.
  */
 @Service
@@ -27,7 +27,11 @@ public class LocationService {
 
     @Transactional(readOnly = true)
     public List<LocationResponse> list() {
-        return locationRepository.findCountryAndProvinces(adminScopeService.current().countryId()).stream()
+        AdminScopeService.Scope scope = adminScopeService.current();
+        List<Location> locations = scope.isGlobal()
+                ? locationRepository.findAllCountriesAndProvinces()
+                : locationRepository.findCountryAndProvinces(scope.countryId());
+        return locations.stream()
                 .map(LocationResponse::from)
                 .toList();
     }
